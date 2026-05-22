@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdaIN Style Transfer Studio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #030712;
+            --panel-bg: rgba(17, 24, 39, 0.45);
+            --border-glow: rgba(99, 102, 241, 0.15);
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 3D Canvas Container */
+        #canvas3d-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Premium Glassmorphism */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8),
+                0 0 50px -10px rgba(99, 102, 241, 0.15);
+            transform: translateY(-4px);
+        }
+
+        /* App Header Layout */
+        .navbar {
+            background: rgba(3, 7, 18, 0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.2rem 0;
+            z-index: 10;
+        }
+
+        .navbar-brand {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.4rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 30%, var(--text-muted) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .studio-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 3.2rem;
+            letter-spacing: -1.5px;
+            background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-top: 8rem;
+        }
+
+        /* Dropzones & Image Previews */
+        .preview-box {
+            width: 100%;
+            height: 320px;
+            background: rgba(3, 7, 18, 0.6);
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-box:hover {
+            border-color: var(--accent-primary);
+            background: rgba(99, 102, 241, 0.03);
+            color: var(--text-main);
+        }
+
+        .preview-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .panel-caption {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #f3f4f6;
+            letter-spacing: -0.2px;
+        }
+
+        /* Form Controls */
+        .form-control {
+            background-color: rgba(3, 7, 18, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-radius: 12px;
+            padding: 0.6rem 1rem;
+        }
+
+        .form-control:focus {
+            background-color: rgba(3, 7, 18, 0.8);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+            color: var(--text-main);
+        }
+
+        .form-control::file-selector-button {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+            border: none;
+            border-radius: 8px;
+            padding: 0.4rem 1rem;
+            margin-right: 1rem;
+            transition: background 0.2s;
+        }
+
+        .form-control::file-selector-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Futuristic Slider Elements */
+        .slider-header {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+        }
+
+        .custom-range {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            outline: none;
+        }
+
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--accent-primary), 0 0 30px var(--accent-secondary);
+            transition: transform 0.15s ease-in-out;
+        }
+
+        .custom-range::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Action Buttons */
+        .btn-action-hub {
+            background: #ffffff;
+            color: #030712;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            padding: 16px 48px;
+            font-size: 1.05rem;
+            border-radius: 14px;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 40px -10px rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-action-hub:hover {
+            background: var(--accent-primary);
+            color: #ffffff;
+            box-shadow: 0 20px 40px -10px rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Flow Process Cards */
+        .example-flow-card {
+            background: rgba(3, 7, 18, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 1.5rem;
+        }
+
+        .flow-thumb-wrap {
+            border-radius: 12px;
+            overflow: hidden;
+            height: 180px;
+            background: #030712;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .flow-thumb-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .flow-arrow-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 1.5rem;
+        }
+
+        /* Accordion Customization */
+        .accordion-item {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 0.5rem;
+        }
+
+        .accordion-button {
+            background: transparent;
+            color: var(--text-main);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            padding: 1.5rem 1rem;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background: transparent;
+            color: var(--accent-primary);
+            box-shadow: none;
+        }
+
+        .accordion-button::after {
+            filter: invert(1);
+        }
+
+        .accordion-body {
+            color: var(--text-muted);
+            padding-bottom: 1.5rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        footer {
+            background: rgba(3, 7, 18, 0.8);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+        }
+
+        /* Processing Engine Screen */
+        .loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #030712;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .loader-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner-ring {
+            width: 64px;
+            height: 64px;
+            border: 2px solid rgba(255, 255, 255, 0.05);
+            border-top: 2px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: rotateEngine 0.8s linear infinite;
+        }
+
+        @keyframes rotateEngine {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Interactive 3D Render Substrate -->
+    <div id="canvas3d-container"></div>
+
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>NeuralStudio</a>
+            <button class="navbar-toggler navbar-dark" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto gap-2">
+                    <li class="nav-item"><a class="nav-link px-3 text-white-50" href="#">Workspace</a></li>
+                    <li class="nav-item"><a class="nav-link px-3 text-white-50" href="#">Gallery</a></li>
+                    <li class="nav-item"><a class="nav-link px-3 text-white-50" href="#">Documentation</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container position-relative style-interface-main">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-8">
+                <h1 class="studio-title">StyleForge AI</h1>
+                <p class="text-secondary fs-5 mb-5">Arbitrary Style Transfer running on adaptive multi-layer neural
+                    statistics engine.</p>
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
+            {{ form.hidden_tag() }}
+
+            <div class="row g-4 justify-content-center">
+                <!-- Content Panel Input -->
+                <div class="col-lg-5">
+                    <div class="glass-panel p-4 h-100">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="panel-caption">Content Target</span>
+                            <i class="fa-regular fa-image text-secondary"></i>
+                        </div>
+                        <div class="preview-box mb-4" id="contentPreview">
+                            {% if content_image %}
+                            <img src="{{ url_for('send_image', filename=content_image) }}" alt="Content Source">
+                            {% else %}
+                            <i class="fa-solid fa-cloud-arrow-up mb-3 fs-3 text-white-50"></i>
+                            <span class="small">Drop or navigate to base asset</span>
+                            {% endif %}
+                        </div>
+                        {{ form.content(class="form-control", onchange="previewFile(this, 'contentPreview')") }}
+                    </div>
+                </div>
+
+                <!-- Style Panel Input -->
+                <div class="col-lg-5">
+                    <div class="glass-panel p-4 h-100">
+                        <div class="d-flex align-items-between justify-content-between mb-3">
+                            <span class="panel-caption">Style Architecture</span>
+                            <i class="fa-solid fa-palette text-secondary"></i>
+                        </div>
+                        <div class="preview-box mb-4" id="stylePreview">
+                            {% if style_image %}
+                            <img src="{{ url_for('send_image', filename=style_image) }}" alt="Style Reference">
+                            {% else %}
+                            <i class="fa-solid fa-palette mb-3 fs-3 text-white-50"></i>
+                            <span class="small">Drop or navigate to texture anchor</span>
+                            {% endif %}
+                        </div>
+                        {{ form.style(class="form-control", onchange="previewFile(this, 'stylePreview')") }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Latent Calibration Slider -->
+            <div class="row justify-content-center mt-5">
+                <div class="col-lg-6">
+                    <div class="glass-panel p-4 text-center">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="slider-header">Blending Weight (&alpha;)</span>
+                            <span id="rangeValue"
+                                class="badge bg-dark border border-secondary px-3 py-2 font-monospace">1.0</span>
+                        </div>
+                        {{ form.alpha(class="custom-range", id="alphaRange", type="range", min="0", max="1", step="0.1")
+                        }}
+                    </div>
+                    <div class="text-center mt-5">
+                        {{ form.submit(class="btn-action-hub") }}
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <!-- Hyper-inference Generated Matrix -->
+        {% if result_image %}
+        <div class="row justify-content-center mt-5" id="resultSection">
+            <div class="col-lg-8">
+                <div class="glass-panel p-3 border-light">
+                    <div class="position-relative overflow-hidden rounded-4 mb-3">
+                        <img src="{{ url_for('send_image', filename=result_image) }}" class="img-fluid w-100"
+                            alt="Inference Engine Product">
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center p-2">
+                        <div>
+                            <span class="d-block fw-bold text-white">Compilation Output</span>
+                            <span class="small text-secondary font-monospace">AdaIN layer execution complete</span>
+                        </div>
+                        <a href="{{ url_for('send_image', filename=result_image) }}" download
+                            class="btn btn-sm btn-outline-light px-4 py-2 rounded-3">Export Texture</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert mt-5 border-0 glass-panel p-4 text-center text-danger" role="alert"
+            style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2) !important;">
+            <i class="fa-solid fa-triangle-exclamation mb-2 fs-4"></i>
+            <div class="fw-bold">Pipeline Compilation Failure</div>
+            <p class="small text-secondary mb-0 mt-1">{{ error }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Historic Flow Samples Grid -->
+        <section class="mt-5 pt-5">
+            <h3 class="font-monospace text-center fs-5 mb-4 text-white-50"
+                style="letter-spacing: 2px; text-transform: uppercase;">Latent Pipelines Examples</h3>
+            <div class="glass-panel p-4">
+                <div class="row g-4">
+                    <div class="col-xl-6">
+                        <div class="example-flow-card">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-5">
+                                    <div class="flow-thumb-wrap mb-2">
+                                        <img src="{{ url_for('send_example', filename='brad_pitt.jpg') }}"
+                                            alt="Source Asset">
+                                    </div>
+                                    <div class="flow-thumb-wrap">
+                                        <img src="{{ url_for('send_example', filename='sketch.png') }}"
+                                            alt="Texture Matrix">
+                                    </div>
+                                </div>
+                                <div class="col-2 flow-arrow-box"><i class="fa-solid fa-chevron-right"></i></div>
+                                <div class="col-5">
+                                    <div class="flow-thumb-wrap h-100" style="height: 370px !important;">
+                                        <img src="{{ url_for('send_example', filename='stylized_brad_pitt.jpg') }}"
+                                            alt="Synthesized Composite">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6">
+                        <div class="example-flow-card">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-5">
+                                    <div class="flow-thumb-wrap mb-2">
+                                        <img src="{{ url_for('send_example', filename='brad_pitt.jpg') }}"
+                                            alt="Source Asset">
+                                    </div>
+                                    <div class="flow-thumb-wrap">
+                                        <img src="{{ url_for('send_example', filename='picasso_seated_nude_hr.jpg') }}"
+                                            alt="Texture Matrix">
+                                    </div>
+                                </div>
+                                <div class="col-2 flow-arrow-box"><i class="fa-solid fa-chevron-right"></i></div>
+                                <div class="col-5">
+                                    <div class="flow-thumb-wrap h-100" style="height: 370px !important;">
+                                        <img src="{{ url_for('send_example', filename='stylized_brad_pitt (1).jpg') }}"
+                                            alt="Synthesized Composite">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Structural Knowledge Accordion -->
+        <section class="mt-5 pt-4 mb-5">
+            <h3 class="font-monospace text-center fs-5 mb-4 text-white-50"
+                style="letter-spacing: 2px; text-transform: uppercase;">Technical Protocol Knowledge</h3>
+            <div class="glass-panel p-4">
+                <div class="accordion" id="studioFaq">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#f1">
+                                Is the model fully local or dependent on external architectures?
+                            </button>
+                        </h2>
+                        <div id="f1" class="accordion-collapse collapse" data-bs-parent="#studioFaq">
+                            <div class="accordion-body">
+                                The architecture avoids third-party API dependencies. Every iteration undergoes full
+                                feature space and mean-variance alignment training directly within our structural
+                                pipelines.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#f2">
+                                Is this environment rate-limited?
+                            </button>
+                        </h2>
+                        <div id="f2" class="accordion-collapse collapse" data-bs-parent="#studioFaq">
+                            <div class="accordion-body">
+                                This structural deployment variant acts as an unlocked sandbox playground environment
+                                with open feature computing metrics for general processing.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#f3">
+                                What variations of stylistic textures are accepted?
+                            </button>
+                        </h2>
+                        <div id="f3" class="accordion-collapse collapse" data-bs-parent="#studioFaq">
+                            <div class="accordion-body">
+                                The Adaptive Instance Normalization framework easily tracks and decomposes abstract
+                                structures, complex geometric ink arrays, charcoal arrays, and traditional oil painting
+                                schemas seamlessly.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#f4">
+                                What describes the baseline underlying tech stack?
+                            </button>
+                        </h2>
+                        <div id="f4" class="accordion-collapse collapse" data-bs-parent="#studioFaq">
+                            <div class="accordion-body">
+                                The functional backend is orchestrated via Python and PyTorch matrices, mapped cleanly
+                                through a highly performant Flask processing layer.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="py-5 mt-5 position-relative z-1">
+        <div class="container text-center text-md-start">
+            <div class="row g-4 justify-content-between">
+                <div class="col-md-5">
+                    <span class="font-monospace text-white fw-bold mb-3 d-block">NeuralStudio Labs</span>
+                    <p class="text-secondary small">Deep architectural translation through real-time feature-space
+                        reconfiguration engines.</p>
+                </div>
+                <div class="col-md-3 text-md-end">
+                    <span class="font-monospace text-white fw-bold mb-3 d-block">Connect</span>
+                    <div class="d-flex gap-3 justify-content-center justify-content-md-end">
+                        <a href="#" class="text-secondary"><i class="fab fa-github fs-5"></i></a>
+                        <a href="#" class="text-secondary"><i class="fab fa-twitter fs-5"></i></a>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-4 opacity-10">
+            <div class="text-center text-secondary small">
+                &copy; 2026 NeuralStudio Inc. Functional Sandboxed Stack Runtime.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Latent Inference Loader Interface -->
+    <div class="loader-overlay" id="loader">
+        <div class="spinner-ring mb-4"></div>
+        <span class="font-monospace text-white text-uppercase tracking-widest small">Aligning Feature Spaces...</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Import Three.js Library for 3D Space Scene Animation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // File upload live synchronization previews
+        function previewFile(input, previewId) {
+            const preview = document.getElementById(previewId);
+            const file = input.files[0];
+            const reader = new FileReader();
+
+            reader.addEventListener("load", function () {
+                preview.innerHTML = `<img src="${reader.result}" alt="Runtime Input Preview">`;
+            }, false);
+
+            if (file) {
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Processing trigger activation state tracker
+        document.getElementById('uploadForm').addEventListener('submit', function () {
+            document.getElementById('loader').classList.add('active');
+        });
+
+        window.onload = function () {
+            if (document.getElementById('resultSection')) {
+                document.getElementById('resultSection').scrollIntoView({ behavior: "smooth" });
+            }
+
+            // --- Custom Interactive 3D Particle Cloud Architecture Engine ---
+            const container = document.getElementById('canvas3d-container');
+            const scene = new THREE.Scene();
+
+            // Perspective Camera configurations
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 45;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Core Mathematical Particle Constellation Geometries 
+            const particleCount = 1400;
+            const positions = new Float32Array(particleCount * 3);
+            const randomScales = new Float32Array(particleCount);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                // Wave formulation clusters
+                positions[i] = (Math.random() - 0.5) * 110;
+                positions[i + 1] = (Math.random() - 0.5) * 70;
+                positions[i + 2] = (Math.random() - 0.5) * 60;
+                randomScales[i / 3] = Math.random();
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            // Design modern circular soft light micro-particle textures dynamically via structural canvas
+            const createCircleTexture = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 32;
+                canvas.height = 32;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 32, 32);
+                return new THREE.CanvasTexture(canvas);
+            };
+
+            // Shaders materials configurations map
+            const material = new THREE.PointsMaterial({
+                size: 0.35,
+                map: createCircleTexture(),
+                transparent: true,
+                color: new THREE.Color('#6366f1'),
+                opacity: 0.45,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const particleSystem = new THREE.Points(geometry, material);
+            scene.add(particleSystem);
+
+            // Interactive Tracking Matrices variables
+            let targetMouseX = 0, targetMouseY = 0;
+            let currentMouseX = 0, currentMouseY = 0;
+
+            window.addEventListener('mousemove', (e) => {
+                targetMouseX = (e.clientX - window.innerWidth / 2) * 0.04;
+                targetMouseY = (e.clientY - window.innerHeight / 2) * 0.04;
+            });
+
+            // Frame rendering optimization clock loops
+            let clock = new THREE.Clock();
+
+            function renderFrameLoop() {
+                requestAnimationFrame(renderFrameLoop);
+
+                const elapsedTime = clock.getElapsedTime();
+
+                // Smooth Interpolation (Lerp) for interaction responsiveness
+                currentMouseX += (targetMouseX - currentMouseX) * 0.05;
+                currentMouseY += (targetMouseY - currentMouseY) * 0.05;
+
+                // Fluid rotational mutations over time
+                particleSystem.rotation.y = elapsedTime * 0.025 + currentMouseX * 0.15;
+                particleSystem.rotation.x = elapsedTime * 0.015 + currentMouseY * 0.15;
+
+                // Subtle spatial pulsation mechanics simulating structural calculations
+                const positionsArr = particleSystem.geometry.attributes.position.array;
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    const scaleFactor = randomScales[i];
+                    positionsArr[i3 + 1] += Math.sin(elapsedTime + scaleFactor * 10) * 0.012;
+                }
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+
+                renderer.render(scene, camera);
+            }
+
+            renderFrameLoop();
+
+            // Responsive viewport adaptivity handler
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Weight Blend range slider UI animation adjustments
+            const rangeSlider = document.getElementById('alphaRange');
+            const rangeText = document.getElementById('rangeValue');
+
+            if (rangeSlider) {
+                rangeSlider.addEventListener('input', (e) => {
+                    rangeText.textContent = parseFloat(e.target.value).toFixed(1);
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
