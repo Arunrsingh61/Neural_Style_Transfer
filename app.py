@@ -31,21 +31,18 @@ class UploadForm(FlaskForm):
     alpha = FloatField('Alpha', default=1.0)
     submit = SubmitField('Transfer Style')
 
-try:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    encoder = VGGEncoder('vgg_normalised.pth').to(device)
-    decoder = Decoder().to(device)
-    decoder.load_state_dict(torch.load('experiment/final_exp/decoder_final.pth', map_location=device))
-    encoder.eval()
-    decoder.eval()
-    print(f"Models loaded on {device}")
-except Exception as e:
-    print(f"FATAL: Model loading failed: {e}")
-    raise
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+encoder = VGGEncoder('vgg_normalised.pth').to(device)
+decoder = Decoder().to(device)
+decoder.load_state_dict(torch.load('/home/ubuntu/Desktop/NST_Code/experiment/final_exp/decoder_final.pth'))
+
+encoder.eval()
+decoder.eval()
 
 def allowed_file(filename):
     return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 def style_transfer(content_image, style_image, encoder, decoder, alpha, device):
     content_transform = transforms.Compose([
@@ -91,31 +88,26 @@ def index():
     error = None
 
     if form.validate_on_submit():
-        # Handle content image - new upload takes priority, then fall back to hidden field
         if form.content.data and form.content.data.filename:
             if allowed_file(form.content.data.filename):
                 content_filename = secure_filename(form.content.data.filename)
                 form.content.data.save(os.path.join(app.config['UPLOAD_FOLDER'], content_filename))
-            else:
-                error = 'Invalid content file type'
-        elif form.content_path.data:  # ← fallback to previously uploaded file
+                form.content_path.data = content_filename
+        else:
             content_filename = form.content_path.data
 
-        # Handle style image - new upload takes priority, then fall back to hidden field
         if form.style.data and form.style.data.filename:
             if allowed_file(form.style.data.filename):
                 style_filename = secure_filename(form.style.data.filename)
                 form.style.data.save(os.path.join(app.config['UPLOAD_FOLDER'], style_filename))
-            else:
-                error = 'Invalid style file type'
-        elif form.style_path.data:    # ← fallback to previously uploaded file
+                form.style_path.data = style_filename
+        else:
             style_filename = form.style_path.data
 
-        # Run style transfer only if both images are available and no errors yet
-        if content_filename and style_filename and not error:
+        if content_filename and style_filename:
             content_path = os.path.join(app.config['UPLOAD_FOLDER'], content_filename)
             style_path = os.path.join(app.config['UPLOAD_FOLDER'], style_filename)
-
+            
             try:
                 content_image = Image.open(content_path).convert('RGB')
                 style_image = Image.open(style_path).convert('RGB')
@@ -126,22 +118,19 @@ def index():
                 result_filename = 'stylized_' + content_filename
                 result_path = os.path.join(app.config['UPLOAD_FOLDER'], result_filename)
                 save_image(stylized_image, result_path)
-
+                
                 result_image = result_filename
-
             except Exception as e:
                 error = str(e)
+    else:
+        if not content_filename:
+            error = 'Please upload content image'
+        if not style_filename:
+            error = 'Please upload style image'
 
-        elif not error:  # ← only show missing-file errors if no other error already set
-            if not content_filename:
-                error = 'Please upload content image'
-            elif not style_filename:
-                error = 'Please upload style image'
+    return render_template('index.html', form=form, result_image=result_image, content_image=content_filename,
+                           style_image=style_filename, error=error)
 
-    # No else here — on GET requests we just render the empty form with no errors
-
-    return render_template('index.html', form=form, result_image=result_image,
-                        content_image=content_filename, style_image=style_filename, error=error)
 
 @app.route('/uploads/<filename>')
 def send_image(filename):
@@ -156,9 +145,3 @@ def send_example(filename):
 if __name__ == '__main__':
     from werkzeug.serving import run_simple
     run_simple('localhost', 5000, app, use_reloader=True, use_debugger=True)
-
-
-
-
-
-
