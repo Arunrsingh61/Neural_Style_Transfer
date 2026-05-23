@@ -37,7 +37,7 @@ encoder = VGGEncoder('vgg_normalised.pth').to(device)
 decoder = Decoder().to(device)
 decoder.load_state_dict(
     torch.load(
-        '/Users/arunsingh/Desktop/ai-nst-project-main/NST_Code/experiment/final_exp/decoder_final.pth',
+        'NST_Code/experiment/final_exp/decoder_final.pth',
         map_location=torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
     )
 )
