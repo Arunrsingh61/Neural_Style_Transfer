@@ -62,7 +62,7 @@ decoder.eval()
 # -----------------------------
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+        filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 # -----------------------------
 # Style Transfer Function
@@ -71,7 +71,7 @@ def style_transfer(content_image, style_image, alpha):
 
     # Reduce image size for Render memory optimization
     transform = transforms.Compose([
-        transforms.Resize((128, 128)),
+        transforms.Resize((256, 256)),
         transforms.ToTensor()
     ])
 
