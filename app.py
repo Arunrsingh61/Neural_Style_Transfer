@@ -35,7 +35,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 encoder = VGGEncoder('vgg_normalised.pth').to(device)
 decoder = Decoder().to(device)
-decoder.load_state_dict(torch.load('/home/ubuntu/Desktop/NST_Code/experiment/final_exp/decoder_final.pth'))
+decoder.load_state_dict(torch.load('experiment/final_exp/decoder_final.pth', map_location=device))
+
 
 encoder.eval()
 decoder.eval()
@@ -129,7 +130,7 @@ def index():
             error = 'Please upload style image'
 
     return render_template('index.html', form=form, result_image=result_image, content_image=content_filename,
-                           style_image=style_filename, error=error)
+                        style_image=style_filename, error=error)
 
 
 @app.route('/uploads/<filename>')
