@@ -613,22 +613,38 @@
 
     <script>
         // File upload live synchronization previews
-        function previewFile(input, previewId) {
+        function previewFile(input, previewId, labelId) {
             const preview = document.getElementById(previewId);
+            const label = document.getElementById(labelId);
             const file = input.files[0];
-            const reader = new FileReader();
+            if (!file) return;
 
+            label.textContent = file.name;
+
+            const reader = new FileReader();
             reader.addEventListener("load", function () {
                 preview.innerHTML = `<img src="${reader.result}" alt="Runtime Input Preview">`;
             }, false);
-
-            if (file) {
-                reader.readAsDataURL(file);
-            }
+            reader.readAsDataURL(file);
         }
 
         // Processing trigger activation state tracker
-        document.getElementById('uploadForm').addEventListener('submit', function () {
+        document.getElementById('uploadForm').addEventListener('submit', function (e) {
+            const contentInput = document.getElementById('content');
+            const styleInput = document.getElementById('style');
+
+            const contentPath = document.querySelector('input[name="content_path"]').value;
+            const stylePath = document.querySelector('input[name="style_path"]').value;
+
+            const hasContent = (contentInput.files && contentInput.files.length > 0) || contentPath;
+            const hasStyle = (styleInput.files && styleInput.files.length > 0) || stylePath;
+
+            if (!hasContent || !hasStyle) {
+                e.preventDefault();
+                alert(!hasContent ? 'Please upload a content image.' : 'Please upload a style image.');
+                return;
+            }
+
             document.getElementById('loader').classList.add('active');
         });
 
