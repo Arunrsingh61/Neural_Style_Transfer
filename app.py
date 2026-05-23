@@ -13,6 +13,9 @@ import io
 # Import your existing AdaIN code
 from utils.models import VGGEncoder, Decoder
 from utils.utils import adaptive_instance_normalization, calc_mean_std
+# ADD these 2 lines
+import gc
+os.environ['PYTORCH_NO_CUDA_MEMORY_CACHING'] = '1'
 
 
 app = Flask(__name__)
@@ -47,12 +50,12 @@ def allowed_file(filename):
 
 def style_transfer(content_image, style_image, encoder, decoder, alpha, device):
     content_transform = transforms.Compose([
-        transforms.Resize(512),
+        transforms.Resize(256),
         transforms.ToTensor()
     ])
 
     style_transform = transforms.Compose([
-        transforms.Resize(512),
+        transforms.Resize(256),
         transforms.ToTensor()
     ])
     content_image = content_transform(content_image).unsqueeze(0).to(device)
@@ -121,6 +124,8 @@ def index():
                 save_image(stylized_image, result_path)
                 
                 result_image = result_filename
+                gc.collect()
+                torch.cuda.empty_cache()
             except Exception as e:
                 error = str(e)
     else:
